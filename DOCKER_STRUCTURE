@@ -1,0 +1,11 @@
+ai-db-profiler/
+│── backend/
+│   ├── db_profiler.py      # your existing profiler code
+│   ├── api.py              # Flask/FastAPI wrapper
+│   ├── requirements.txt
+│── frontend/
+│   ├── streamlit_app.py    # Streamlit UI calling backend APIs
+│   ├── requirements.txt
+│── docker-compose.yml
+│── Dockerfile.backend
+│── Dockerfile.frontend
