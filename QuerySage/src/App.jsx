@@ -1,4 +1,5 @@
 import "./App.css";
+import Navbar from "./Navbar.jsx";
 import { useState, useContext, createContext, useEffect } from "react";
 import {
   BrowserRouter as Router,
@@ -15,7 +16,6 @@ import {
   FaGithub,
   FaTwitter,
   FaLinkedin,
-  FaBolt,
   FaDatabase,
   FaClock,
   FaRobot,
@@ -32,19 +32,16 @@ function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(
     localStorage.getItem("auth") === "true"
   );
-
   const signIn = (cb) => {
     setIsAuthenticated(true);
     localStorage.setItem("auth", "true");
     cb();
   };
-
   const signOut = (cb) => {
     setIsAuthenticated(false);
     localStorage.removeItem("auth");
     cb();
   };
-
   return (
     <AuthContext.Provider value={{ isAuthenticated, signIn, signOut }}>
       {children}
@@ -56,6 +53,31 @@ function AuthProvider({ children }) {
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? children : <Navigate to="/" replace />;
+}
+
+/* ---------- About & Contact ---------- */
+function About() {
+  return (
+    <div className="overlay">
+      <h1 className="main-title">About QuerySage</h1>
+      <p className="subtitle">
+        QuerySage is an AI-powered database observability tool to optimize
+        queries and visualize performance.
+      </p>
+    </div>
+  );
+}
+
+function Contact() {
+  return (
+    <div className="overlay">
+      <h1 className="main-title">Contact Us</h1>
+      <p className="subtitle">
+        Have questions? Email us at{" "}
+        <span className="highlight">support@querysage.com</span>.
+      </p>
+    </div>
+  );
 }
 
 /* ---------- 3D BACKGROUND ---------- */
@@ -87,16 +109,11 @@ function LandingPage() {
   const [showLogin, setShowLogin] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
-
-  const handleLogin = () => {
-    signIn(() => navigate("/dashboard"));
-  };
-
+  const handleLogin = () => signIn(() => navigate("/dashboard"));
   const handleSocialLogin = (provider) => {
     console.log(`Logging in with ${provider}`);
     handleLogin();
   };
-
   return (
     <div className="app">
       <ThreeBG />
@@ -117,8 +134,7 @@ function LandingPage() {
         >
           <p className="subtitle">
             An <span className="highlight">AI-powered</span> database
-            observability tool that detects bottlenecks and gives smart
-            recommendations.
+            observability tool.
           </p>
           <button className="neon-btn" onClick={() => setShowLogin(true)}>
             Sign Up
@@ -180,7 +196,7 @@ function LandingPage() {
 }
 
 /* ---------- CHATBOT ---------- */
-function Chatbot() {
+function Chatbot({ onClose }) {
   const [messages, setMessages] = useState([
     { from: "bot", text: "Hi! Ask me about your queries." },
   ]);
@@ -190,11 +206,9 @@ function Chatbot() {
 
   const sendMessage = async () => {
     if (!input.trim()) return;
-    const newMsg = { from: "user", text: input };
-    setMessages((prev) => [...prev, newMsg]);
+    setMessages((prev) => [...prev, { from: "user", text: input }]);
     setInput("");
     setTyping(true);
-
     try {
       const res = await fetch(`${API_URL}/query`, {
         method: "POST",
@@ -206,7 +220,7 @@ function Chatbot() {
         ...prev,
         { from: "bot", text: data.answer || "No answer returned." },
       ]);
-    } catch (err) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         { from: "bot", text: "Error contacting server." },
@@ -222,7 +236,13 @@ function Chatbot() {
         <div className="chatbot-title">
           <FaRobot className="chatbot-icon" /> QueryBot
         </div>
-        <div className="chatbot-status">Online</div>
+        <button
+          className="close-btn"
+          onClick={onClose}
+          aria-label="Close chatbot"
+        >
+          ✕
+        </button>
       </div>
       <div className="chatbot-messages">
         {messages.map((m, i) => (
@@ -263,37 +283,60 @@ function Dashboard() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState({
+    db_file_size_mb: 0,
     memory_percent: 0,
     disk_percent: 0,
-    db_file_size_mb: 0,
     uptime_seconds: 0,
   });
-  const [plotUrl, setPlotUrl] = useState("");
+  const [showChatbot, setShowChatbot] = useState(true);
+
+  // CSV state
+  const [csvInput, setCsvInput] = useState(null);
+  const [csvOutput, setCsvOutput] = useState([]);
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+  // Load hard-coded CSV output
+  useEffect(() => {
+    fetch("/output/output/formatted_db.csv")
+      .then((res) => res.text())
+      .then((text) => {
+        const rows = text.split("\n").map((r) => r.split(","));
+        setCsvOutput(rows);
+      });
+  }, []);
 
   const fetchMetrics = async () => {
     try {
       const res = await fetch(`${API_URL}/system_metrics`);
       const data = await res.json();
-      setMetrics(data);
-      setPlotUrl(`${API_URL}/clustering_plot?t=${Date.now()}`);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleOptimize = async () => {
-    try {
-      await fetch(`${API_URL}/optimize_queries`, { method: "POST" });
-      alert("Optimization complete!");
-      fetchMetrics();
-    } catch (err) {
-      alert("Error optimizing database");
+      setMetrics({
+        db_file_size_mb: data.db_file_size_mb ?? 0,
+        memory_percent: data.memory_percent ?? 0,
+        disk_percent: data.disk_percent ?? 0,
+        uptime_seconds: data.uptime_seconds ?? 0,
+      });
+    } catch {
+      console.warn("Using fallback metrics");
     }
   };
 
   const handleLogout = () => signOut(() => navigate("/"));
+  const goToVisualize = () => navigate("/visualize");
+
+  // CSV Upload handler
+  const handleCsvUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setCsvInput(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target.result;
+      const rows = text.split("\n").map((r) => r.split(","));
+      setCsvOutput(rows);
+    };
+    reader.readAsText(file);
+  };
 
   useEffect(() => {
     fetchMetrics();
@@ -304,8 +347,7 @@ function Dashboard() {
   return (
     <div className="app">
       <ThreeBG />
-
-      <div className="overlay" style={{ zIndex: 2, textAlign: "center" }}>
+      <div className="overlay">
         <div className="dashboard-header">
           <motion.h1
             className="main-title"
@@ -315,72 +357,106 @@ function Dashboard() {
           >
             QuerySage Dashboard
           </motion.h1>
-          <button className="neon-btn logout-btn" onClick={handleLogout}>
-            Logout
+          <div style={{ display: "flex", gap: "1rem" }}>
+            <button className="neon-btn" onClick={goToVisualize}>
+              📊 Visualize Data
+            </button>
+            <button className="logout-btn" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
+        </div>
+
+        <div className="dashboard-content">
+          {/* Metrics */}
+          <div className="metrics">
+            <div className="metric-card">
+              <FaDatabase className="metric-icon" />
+              <h3>DB File Size</h3>
+              <p>{metrics.db_file_size_mb} MB</p>
+            </div>
+            <div className="metric-card">
+              <FaMicrochip className="metric-icon" />
+              <h3>Memory Usage</h3>
+              <p>{metrics.memory_percent}%</p>
+            </div>
+            <div className="metric-card">
+              <FaHdd className="metric-icon" />
+              <h3>Disk Usage</h3>
+              <p>{metrics.disk_percent}%</p>
+            </div>
+            <div className="metric-card">
+              <FaClock className="metric-icon" />
+              <h3>Uptime</h3>
+              <p>{Math.floor(metrics.uptime_seconds / 3600)} hrs</p>
+            </div>
+          </div>
+
+          {/* CSV Upload Section */}
+          <div className="glass-card">
+            <h3 className="highlight">Upload CSV</h3>
+            <input type="file" accept=".csv" onChange={handleCsvUpload} />
+            <h4 className="highlight" style={{ marginTop: "1rem" }}>
+              CSV Output Preview
+            </h4>
+            <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <tbody>
+                  {csvOutput.map((row, i) => (
+                    <tr key={i}>
+                      {row.map((cell, j) => (
+                        <td
+                          key={j}
+                          style={{
+                            border: "1px solid #0ff",
+                            padding: "4px",
+                            color: "#fff",
+                          }}
+                        >
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {!showChatbot && (
+          <button
+            className="neon-btn"
+            style={{
+              position: "fixed",
+              bottom: "30px",
+              right: "30px",
+              zIndex: 6,
+            }}
+            onClick={() => setShowChatbot(true)}
+          >
+            💬 Open Chatbot
           </button>
-        </div>
-      </div>
-
-      <div
-        className="dashboard-content"
-        style={{
-          position: "relative",
-          zIndex: 2,
-          marginTop: "180px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "30px",
-        }}
-      >
-        <div
-          className="metrics"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "center",
-            gap: "20px",
-          }}
-        >
-          <div className="metric-card">
-            <FaDatabase className="metric-icon" />
-            <h3>DB File Size</h3>
-            <p>{metrics.db_file_size_mb} MB</p>
-          </div>
-          <div className="metric-card">
-            <FaMicrochip className="metric-icon" />
-            <h3>Memory Usage</h3>
-            <p>{metrics.memory_percent}%</p>
-          </div>
-          <div className="metric-card">
-            <FaHdd className="metric-icon" />
-            <h3>Disk Usage</h3>
-            <p>{metrics.disk_percent}%</p>
-          </div>
-          <div className="metric-card">
-            <FaClock className="metric-icon" />
-            <h3>Uptime</h3>
-            <p>{Math.floor(metrics.uptime_seconds / 3600)} hrs</p>
-          </div>
-        </div>
-
-        <button className="neon-btn optimize-btn" onClick={handleOptimize}>
-          <FaBolt className="optimize-icon" /> Optimize Queries
-        </button>
-
-        {plotUrl && (
-          <div className="plot-container">
-            <h3>Clustering Plot</h3>
-            <img
-              src={plotUrl}
-              alt="Clustering Plot"
-              style={{ maxWidth: "80%", borderRadius: "12px" }}
-            />
-          </div>
         )}
       </div>
+      {showChatbot && <Chatbot onClose={() => setShowChatbot(false)} />}
+    </div>
+  );
+}
 
-      <Chatbot />
+/* ---------- VISUALIZE DATA ---------- */
+function VisualizeData() {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  return (
+    <div className="overlay">
+      <h1 className="main-title">Clustering Visualization</h1>
+      <div className="plot-container">
+        <img
+          src={`${API_URL}/clustering_plot`}
+          alt="Clustering Plot"
+          style={{ maxWidth: "100%", borderRadius: "12px" }}
+        />
+      </div>
     </div>
   );
 }
@@ -390,13 +466,24 @@ function App() {
   return (
     <AuthProvider>
       <Router>
+        <Navbar />
         <Routes>
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/" element={<LandingPage />} />
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visualize"
+            element={
+              <ProtectedRoute>
+                <VisualizeData />
               </ProtectedRoute>
             }
           />
