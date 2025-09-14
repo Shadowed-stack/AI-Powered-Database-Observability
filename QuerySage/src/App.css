@@ -637,3 +637,22 @@ body, html, #root {
 .csv-output th {
   background: rgba(0, 255, 255, 0.1);
 }
+/* CSV Download Button */
+.csv-download-btn {
+  margin-top: 1rem;
+  padding: 0.8rem 2rem;
+  border-radius: 30px;
+  border: none;
+  background: linear-gradient(90deg, #00c3ff, #00aaff);
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 0 15px #0ff, 0 0 30px #417be6;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: inline-block;
+}
+
+.csv-download-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 25px #0ff, 0 0 45px #1a7cd2;
+}

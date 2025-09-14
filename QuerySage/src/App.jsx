@@ -278,6 +278,9 @@ function Chatbot({ onClose }) {
   );
 }
 
+
+/* ---------- DASHBOARD ---------- */
+/* ---------- DASHBOARD ---------- */
 /* ---------- DASHBOARD ---------- */
 function Dashboard() {
   const { signOut } = useAuth();
@@ -290,22 +293,15 @@ function Dashboard() {
   });
   const [showChatbot, setShowChatbot] = useState(true);
 
-  // CSV state
-  const [csvInput, setCsvInput] = useState(null);
-  const [csvOutput, setCsvOutput] = useState([]);
+  // CSV states
+  const [userCsvOutput, setUserCsvOutput] = useState([]);
+  const [userCsvData, setUserCsvData] = useState("");
+  const [defaultCsvOutput, setDefaultCsvOutput] = useState([]);
+  const [defaultCsvData, setDefaultCsvData] = useState("");
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-  // Load hard-coded CSV output
-  useEffect(() => {
-    fetch("/output/output/formatted_db.csv")
-      .then((res) => res.text())
-      .then((text) => {
-        const rows = text.split("\n").map((r) => r.split(","));
-        setCsvOutput(rows);
-      });
-  }, []);
-
+  // Fetch system metrics
   const fetchMetrics = async () => {
     try {
       const res = await fetch(`${API_URL}/system_metrics`);
@@ -321,25 +317,45 @@ function Dashboard() {
     }
   };
 
-  const handleLogout = () => signOut(() => navigate("/"));
-  const goToVisualize = () => navigate("/visualize");
+  // Fetch default formatted CSV from backend
+  const fetchDefaultCsv = async () => {
+    try {
+      const res = await fetch(`${API_URL}/get_formatted_csv`);
+      const text = await res.text();
+      setDefaultCsvData(text);
+      const rows = text
+        .trim()
+        .split("\n")
+        .map((row) => row.split(","));
+      setDefaultCsvOutput(rows);
+    } catch (err) {
+      console.error("Failed to fetch default CSV:", err);
+    }
+  };
 
-  // CSV Upload handler
+  // CSV upload by user
   const handleCsvUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setCsvInput(file);
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target.result;
-      const rows = text.split("\n").map((r) => r.split(","));
-      setCsvOutput(rows);
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const rows = text
+        .trim()
+        .split("\n")
+        .map((row) => row.split(","));
+      setUserCsvOutput(rows);
+      setUserCsvData(text);
     };
     reader.readAsText(file);
   };
 
+  const handleLogout = () => signOut(() => navigate("/"));
+  const goToVisualize = () => navigate("/visualize");
+
   useEffect(() => {
     fetchMetrics();
+    fetchDefaultCsv();
     const interval = setInterval(fetchMetrics, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -368,7 +384,7 @@ function Dashboard() {
         </div>
 
         <div className="dashboard-content">
-          {/* Metrics */}
+          {/* Metrics Cards */}
           <div className="metrics">
             <div className="metric-card">
               <FaDatabase className="metric-icon" />
@@ -392,35 +408,150 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* CSV Upload Section */}
+          {/* CSV Section */}
           <div className="glass-card">
-            <h3 className="highlight">Upload CSV</h3>
-            <input type="file" accept=".csv" onChange={handleCsvUpload} />
-            <h4 className="highlight" style={{ marginTop: "1rem" }}>
-              CSV Output Preview
-            </h4>
-            <div style={{ maxHeight: "300px", overflowY: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  {csvOutput.map((row, i) => (
-                    <tr key={i}>
-                      {row.map((cell, j) => (
-                        <td
-                          key={j}
-                          style={{
-                            border: "1px solid #0ff",
-                            padding: "4px",
-                            color: "#fff",
-                          }}
-                        >
-                          {cell}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <h3 className="highlight">CSV Data</h3>
+
+            {/* User CSV Upload */}
+            <div style={{ marginTop: "0.5rem" }}>
+              <h4 style={{ color: "#0ff", marginBottom: "0.5rem" }}>
+                Upload Your CSV
+              </h4>
+              <input type="file" accept=".csv" onChange={handleCsvUpload} />
+              {userCsvOutput.length > 0 && (
+                <>
+                  <div
+                    style={{
+                      maxHeight: "200px",
+                      overflowY: "auto",
+                      marginTop: "0.5rem",
+                    }}
+                  >
+                    <table
+                      style={{ width: "100%", borderCollapse: "collapse" }}
+                    >
+                      <thead>
+                        <tr>
+                          {userCsvOutput[0].map((_, idx) => (
+                            <th
+                              key={idx}
+                              style={{
+                                border: "1px solid #0ff",
+                                padding: "4px",
+                                color: "#0ff",
+                                textShadow: "0 0 6px #0ff",
+                              }}
+                            >
+                              Col {idx + 1}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {userCsvOutput.map((row, i) => (
+                          <tr key={i}>
+                            {row.map((cell, j) => (
+                              <td
+                                key={j}
+                                style={{
+                                  border: "1px solid #0ff",
+                                  padding: "4px",
+                                  color: "#fff",
+                                }}
+                              >
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button
+                    className="csv-download-btn"
+                    onClick={() => {
+                      const blob = new Blob([userCsvData], {
+                        type: "text/csv;charset=utf-8;",
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = "user_uploaded.csv";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    style={{ marginTop: "0.5rem" }}
+                  >
+                    ⬇ Download Your CSV
+                  </button>
+                </>
+              )}
             </div>
+
+            {/* Default formatted CSV */}
+            {defaultCsvOutput.length > 0 && (
+              <div style={{ marginTop: "1.5rem" }}>
+                <h4 style={{ color: "#0ff", marginBottom: "0.5rem" }}>
+                  Formatted DB CSV
+                </h4>
+                <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        {defaultCsvOutput[0].map((_, idx) => (
+                          <th
+                            key={idx}
+                            style={{
+                              border: "1px solid #0ff",
+                              padding: "4px",
+                              color: "#0ff",
+                              textShadow: "0 0 6px #0ff",
+                            }}
+                          >
+                            Col {idx + 1}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {defaultCsvOutput.map((row, i) => (
+                        <tr key={i}>
+                          {row.map((cell, j) => (
+                            <td
+                              key={j}
+                              style={{
+                                border: "1px solid #0ff",
+                                padding: "4px",
+                                color: "#fff",
+                              }}
+                            >
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  className="csv-download-btn"
+                  onClick={() => {
+                    const blob = new Blob([defaultCsvData], {
+                      type: "text/csv;charset=utf-8;",
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "formatted_db.csv";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  style={{ marginTop: "0.5rem" }}
+                >
+                  ⬇ Download Formatted DB CSV
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -439,10 +570,13 @@ function Dashboard() {
           </button>
         )}
       </div>
+
       {showChatbot && <Chatbot onClose={() => setShowChatbot(false)} />}
     </div>
   );
 }
+
+
 
 /* ---------- VISUALIZE DATA ---------- */
 function VisualizeData() {
