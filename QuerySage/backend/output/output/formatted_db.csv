@@ -1,0 +1,21 @@
+record_id,customer_name,product_category,order_date,order_amount,payment_method,shipping_status,customer_email
+1,John Doe,Electronics,2024-08-15,150.75,Credit Card,Shipped,johndoe@email.com
+2,Jane Smith,Home Goods,,50.2,PayPal,,jane.smith@email.com
+3,Robert Brown,Apparel,2024-08-18,0.0,Debit Card,Shipped,robertb@email.com
+4,Emily White,Books,2024-08-19,35.0,Credit Card,Processing,emily.w@email.com
+5,,Toys,2024-08-20,25.5,,Shipped,
+6,Michael Green,Electronics,2024-08-21,800.0,Wire Transfer,,michaelg@email.com
+7,Sarah Davis,Groceries,2024-08-22,120.45,Credit Card,Shipped,sarah.d@email.com
+8,David Wilson,,2024-08-23,75.9,PayPal,Canceled,davidw@email.com
+9,Jennifer Lee,Apparel,2024-08-24,25.0,Debit Card,Shipped,jennifer.l@email.com
+10,Chris Evans,Home Goods,2024-08-25,0.0,Credit Card,,chris.e@email.com
+11,Patricia Miller,Books,2024-08-26,15.25,,Shipped,patriciam@email.com
+12,Daniel Taylor,,2024-08-27,55.0,PayPal,Shipped,
+13,Linda Moore,Groceries,2024-08-28,0.0,Credit Card,Processing,lindam@email.com
+14,James Thomas,Electronics,2024-08-29,120.0,Wire Transfer,Shipped,james.t@email.com
+15,Maria Garcia,Apparel,,90.5,Credit Card,,maria.g@email.com
+16,Kevin Baker,Books,2024-09-01,10.0,Debit Card,Shipped,kevinb@email.com
+17,Nancy Hill,Home Goods,2024-09-02,250.75,,Shipped,
+18,Paul Clark,,2024-09-03,60.0,PayPal,Canceled,
+19,Lisa Turner,Electronics,2024-09-04,325.0,Credit Card,Shipped,lisat@email.com
+20,Brian Hall,Groceries,2024-09-05,0.0,Debit Card,Processing,brian.h@email.com

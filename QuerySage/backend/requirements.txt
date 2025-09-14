@@ -1,0 +1,10 @@
+flask
+flask-cors
+sentence-transformers
+faiss-cpu       # or faiss-gpu if you have GPU and appropriate env
+numpy
+PyPDF2
+requests
+python-dotenv   # optional
+matplotlib
+pandas
